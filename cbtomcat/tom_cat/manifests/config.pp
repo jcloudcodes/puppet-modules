@@ -133,7 +133,7 @@ class tom_cat::config (
       require => File["${install_dir}/webapps/manager/META-INF"],
     }
 
-    file { "${install_dir}/webapps/manager/META-INF":
+    file { "${install_dir}/webapps/manager":
       ensure  => directory,
       owner   => $tomcat_user,
       group   => $tomcat_group,
@@ -141,6 +141,16 @@ class tom_cat::config (
       require => [
         Class['tom_cat::install'],
         Exec['set_tomcat_permissions'],
+      ],
+    }
+
+    file { "${install_dir}/webapps/manager/META-INF":
+      ensure  => directory,
+      owner   => $tomcat_user,
+      group   => $tomcat_group,
+      mode    => '0755',
+      require => [
+        File["${install_dir}/webapps/manager"],
       ],
     }
 

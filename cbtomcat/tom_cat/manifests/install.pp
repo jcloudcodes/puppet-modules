@@ -119,8 +119,8 @@ class tom_cat::install (
     }
 
     exec { 'seed_default_webapps_linux':
-      command => "/bin/bash -c 'mkdir -p ${install_dir}/webapps && rsync -a ${tomcat_staging_dir}/webapps/ ${install_dir}/webapps/'",
-      onlyif  => "/bin/bash -c 'test -d ${tomcat_staging_dir}/webapps'",
+      command => "/bin/bash -c 'mkdir -p ${install_dir}/webapps && if test -d ${tomcat_staging_dir}/webapps; then rsync -a ${tomcat_staging_dir}/webapps/ ${install_dir}/webapps/; else cp -a ${install_dir}/webapps.dist/. ${install_dir}/webapps/; fi'",
+      onlyif  => "/bin/bash -c 'test -d ${tomcat_staging_dir}/webapps || test -d ${install_dir}/webapps.dist'",
       unless  => "test -d ${install_dir}/webapps/manager",
       require => [
         Package['rsync'],
@@ -128,10 +128,17 @@ class tom_cat::install (
       ],
     }
 
+    exec { 'preserve_default_webapps_linux':
+      command => "/bin/bash -c 'rm -rf ${install_dir}/webapps.dist && mkdir -p ${install_dir}/webapps.dist && cp -a ${install_dir}/webapps/. ${install_dir}/webapps.dist/'",
+      unless  => "test -d ${install_dir}/webapps.dist/manager",
+      require => Exec['sync_tomcat_runtime_linux'],
+    }
+
     exec { 'cleanup_tomcat_download_linux':
       command => "/bin/bash -c 'rm -f ${tomcat_download} && rm -rf ${tomcat_staging_dir}'",
       onlyif  => "/bin/bash -c 'test -f ${tomcat_download} || test -d ${tomcat_staging_dir}'",
       require => [
+        Exec['preserve_default_webapps_linux'],
         Exec['sync_tomcat_runtime_linux'],
         Exec['seed_default_webapps_linux'],
       ],
