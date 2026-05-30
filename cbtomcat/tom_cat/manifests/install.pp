@@ -105,6 +105,22 @@ class tom_cat::install (
     }
 
     file { [
+      "${install_dir}/bin",
+      "${install_dir}/conf",
+      "${install_dir}/lib",
+      "${install_dir}/logs",
+      "${install_dir}/temp",
+      "${install_dir}/webapps",
+      "${install_dir}/work",
+    ]:
+      ensure  => directory,
+      owner   => $tomcat_user,
+      group   => $tomcat_group,
+      mode    => '0755',
+      require => Exec['extract_tomcat_linux'],
+    }
+
+    file { [
       "${install_dir}/bin/catalina.sh",
       "${install_dir}/bin/startup.sh",
       "${install_dir}/bin/shutdown.sh",
@@ -118,9 +134,19 @@ class tom_cat::install (
 
     exec { 'set_tomcat_permissions':
       command => "chown -R ${tomcat_user}:${tomcat_group} ${install_dir}",
-      unless  => "/bin/bash -c 'test \"$(stat -c %U ${install_dir})\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir})\" = \"${tomcat_group}\"'",
+      unless  => "/bin/bash -c 'test \"$(stat -c %U ${install_dir})\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir})\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/startup.sh)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/startup.sh)\" = \"${tomcat_group}\"'",
       require => [
         Exec['extract_tomcat_linux'],
+        File["${install_dir}/bin"],
+        File["${install_dir}/conf"],
+        File["${install_dir}/lib"],
+        File["${install_dir}/logs"],
+        File["${install_dir}/temp"],
+        File["${install_dir}/webapps"],
+        File["${install_dir}/work"],
+        File["${install_dir}/bin/catalina.sh"],
+        File["${install_dir}/bin/startup.sh"],
+        File["${install_dir}/bin/shutdown.sh"],
       ],
     }
 
