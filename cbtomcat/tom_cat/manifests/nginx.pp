@@ -23,6 +23,7 @@ class tom_cat::nginx (
 
   exec { 'validate_tomcat_nginx_config':
     command     => 'nginx -t',
+    path        => ['/usr/sbin', '/usr/bin', '/sbin', '/bin'],
     refreshonly => true,
     subscribe   => File['/etc/nginx/conf.d/tomcat.conf'],
     notify      => Service['nginx'],
