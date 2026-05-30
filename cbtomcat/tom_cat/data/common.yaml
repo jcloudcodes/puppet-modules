@@ -12,3 +12,4 @@ tom_cat::connector_port: 8085
 tom_cat::redirect_port: 8443
 tom_cat::nexus_url: 'https://archive.apache.org/dist/tomcat'
 tom_cat::admin_user: 'admin'
+tom_cat::nginx_server_name: 'tomcat.jcloudcodes.com'

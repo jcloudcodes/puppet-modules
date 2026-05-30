@@ -19,6 +19,7 @@ class tom_cat (
   $redirect_port       = lookup('tom_cat::redirect_port')
   $admin_user          = lookup('tom_cat::admin_user')
   $admin_password      = Sensitive(lookup('tom_cat::admin_password'))
+  $nginx_server_name   = lookup('tom_cat::nginx_server_name', { 'default_value' => 'tomcat.jcloudcodes.com' })
   $windows_install_dir = lookup('tom_cat::windows_install_dir')
 
   if $action == 'uninstall' {
@@ -96,6 +97,11 @@ class tom_cat (
       tomcat_home         => $tomcat_home,
       install_dir         => $install_dir,
       windows_install_dir => $windows_install_dir,
+    }
+
+    -> class { 'tom_cat::nginx':
+      server_name => $nginx_server_name,
+      tomcat_port => "${connector_port}",
     }
 
   } else {
