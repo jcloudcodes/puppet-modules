@@ -17,6 +17,7 @@ class tom_cat::service (
         File["${install_dir}/bin/setenv.sh"],
         File["${install_dir}/conf/server.xml"],
         File["${install_dir}/conf/tomcat-users.xml"],
+        File["${install_dir}/webapps/manager/META-INF/context.xml"],
         File["${install_dir}/tomcat-java"],
       ],
     }

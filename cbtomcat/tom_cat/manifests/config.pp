@@ -68,6 +68,15 @@ class tom_cat::config (
       mode    => '0600',
     }
 
+    file { "${install_dir}/webapps/manager/META-INF/context.xml":
+      ensure  => file,
+      content => epp('tom_cat/manager-context.xml.epp', {}),
+      owner   => $tomcat_user,
+      group   => $tomcat_group,
+      mode    => '0644',
+      require => Class['tom_cat::install'],
+    }
+
     file { "/etc/systemd/system/${service_name}.service":
       ensure  => file,
       content => epp('tom_cat/tomcat.service.epp', {
