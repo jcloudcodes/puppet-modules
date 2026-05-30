@@ -88,68 +88,20 @@ class tom_cat::install (
 
     exec { 'download_tomcat_linux':
       command => "curl -L -o ${tomcat_download} ${tomcat_source_url}",
-      unless  => "/bin/bash -c 'test -f ${install_dir}/.tomcat_version && grep -qx \"${tom_version}\" ${install_dir}/.tomcat_version && test -f ${install_dir}/bin/setclasspath.sh && test -f ${install_dir}/conf/server.xml'",
+      unless  => "/bin/bash -c 'test -f ${install_dir}/.tomcat_version && grep -qx \"${tom_version}\" ${install_dir}/.tomcat_version && test -f ${install_dir}/bin/setclasspath.sh && test -f ${install_dir}/bin/bootstrap.jar'",
       require => File[$install_dir],
     }
 
     exec { 'cleanup_existing_tomcat_linux':
       command => "/bin/bash -c 'find ${install_dir} -mindepth 1 -maxdepth 1 -exec rm -rf {} +'",
-      unless  => "/bin/bash -c 'test -f ${install_dir}/RELEASE-NOTES && grep -q \"Apache Tomcat Version ${tom_version}\" ${install_dir}/RELEASE-NOTES && test -f ${install_dir}/bin/setclasspath.sh'",
+      unless  => "/bin/bash -c 'test -f ${install_dir}/RELEASE-NOTES && grep -q \"Apache Tomcat Version ${tom_version}\" ${install_dir}/RELEASE-NOTES && test -f ${install_dir}/bin/setclasspath.sh && test -f ${install_dir}/bin/bootstrap.jar'",
       require => Exec['download_tomcat_linux'],
     }
 
     exec { 'extract_tomcat_linux':
       command => "/bin/bash -c 'tar -xzf ${tomcat_download} --strip-components=1 -C ${install_dir} && echo ${tom_version} > ${install_dir}/.tomcat_version'",
-      unless  => "/bin/bash -c 'test -f ${install_dir}/.tomcat_version && grep -qx \"${tom_version}\" ${install_dir}/.tomcat_version && test -f ${install_dir}/bin/setclasspath.sh && test -f ${install_dir}/bin/catalina.sh && test -f ${install_dir}/bin/startup.sh && test -f ${install_dir}/bin/shutdown.sh'",
+      unless  => "/bin/bash -c 'test -f ${install_dir}/.tomcat_version && grep -qx \"${tom_version}\" ${install_dir}/.tomcat_version && test -f ${install_dir}/bin/setclasspath.sh && test -f ${install_dir}/bin/bootstrap.jar && test -f ${install_dir}/bin/catalina.sh && test -f ${install_dir}/bin/startup.sh && test -f ${install_dir}/bin/shutdown.sh'",
       require => Exec['cleanup_existing_tomcat_linux'],
-    }
-
-    file { [
-      "${install_dir}/bin",
-      "${install_dir}/conf",
-      "${install_dir}/lib",
-      "${install_dir}/logs",
-      "${install_dir}/temp",
-      "${install_dir}/webapps",
-      "${install_dir}/work",
-    ]:
-      ensure  => directory,
-      owner   => $tomcat_user,
-      group   => $tomcat_group,
-      mode    => '0755',
-      require => Exec['extract_tomcat_linux'],
-    }
-
-    file { [
-      "${install_dir}/bin/setclasspath.sh",
-      "${install_dir}/bin/catalina.sh",
-      "${install_dir}/bin/startup.sh",
-      "${install_dir}/bin/shutdown.sh",
-    ]:
-      ensure  => file,
-      owner   => $tomcat_user,
-      group   => $tomcat_group,
-      mode    => '0755',
-      require => Exec['extract_tomcat_linux'],
-    }
-
-    exec { 'set_tomcat_permissions':
-      command => "chown -R ${tomcat_user}:${tomcat_group} ${install_dir}",
-      unless  => "/bin/bash -c 'test \"$(stat -c %U ${install_dir})\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir})\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/startup.sh)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/startup.sh)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/setclasspath.sh)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/setclasspath.sh)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/bootstrap.jar)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/bootstrap.jar)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/tomcat-juli.jar)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/tomcat-juli.jar)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/conf)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/conf)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/conf/catalina.properties)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/conf/catalina.properties)\" = \"${tomcat_group}\"'",
-      require => [
-        Exec['extract_tomcat_linux'],
-        File["${install_dir}/bin"],
-        File["${install_dir}/conf"],
-        File["${install_dir}/lib"],
-        File["${install_dir}/logs"],
-        File["${install_dir}/temp"],
-        File["${install_dir}/webapps"],
-        File["${install_dir}/work"],
-        File["${install_dir}/bin/setclasspath.sh"],
-        File["${install_dir}/bin/catalina.sh"],
-        File["${install_dir}/bin/startup.sh"],
-        File["${install_dir}/bin/shutdown.sh"],
-      ],
     }
 
     exec { 'cleanup_tomcat_download_linux':

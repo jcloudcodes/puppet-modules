@@ -25,10 +25,61 @@ class tom_cat::config (
     $tomcat_java_link = "${install_dir}/tomcat-java"
     $corretto_home    = "${java_root}/amazon-corretto-${java_version}-linux-x64"
 
+    file { [
+      "${install_dir}/bin",
+      "${install_dir}/conf",
+      "${install_dir}/lib",
+      "${install_dir}/logs",
+      "${install_dir}/temp",
+      "${install_dir}/webapps",
+      "${install_dir}/work",
+    ]:
+      ensure  => directory,
+      owner   => $tomcat_user,
+      group   => $tomcat_group,
+      mode    => '0755',
+      require => Class['tom_cat::install'],
+    }
+
+    file { [
+      "${install_dir}/bin/setclasspath.sh",
+      "${install_dir}/bin/catalina.sh",
+      "${install_dir}/bin/startup.sh",
+      "${install_dir}/bin/shutdown.sh",
+    ]:
+      ensure  => file,
+      owner   => $tomcat_user,
+      group   => $tomcat_group,
+      mode    => '0755',
+      require => Class['tom_cat::install'],
+    }
+
+    exec { 'set_tomcat_permissions':
+      command => "chown -R ${tomcat_user}:${tomcat_group} ${install_dir}",
+      unless  => "/bin/bash -c 'test \"$(stat -c %U ${install_dir})\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir})\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/startup.sh)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/startup.sh)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/setclasspath.sh)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/setclasspath.sh)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/bootstrap.jar)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/bootstrap.jar)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/bin/tomcat-juli.jar)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/bin/tomcat-juli.jar)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/conf)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/conf)\" = \"${tomcat_group}\" && test \"$(stat -c %U ${install_dir}/conf/catalina.properties)\" = \"${tomcat_user}\" && test \"$(stat -c %G ${install_dir}/conf/catalina.properties)\" = \"${tomcat_group}\"'",
+      require => [
+        Class['tom_cat::install'],
+        File["${install_dir}/bin"],
+        File["${install_dir}/conf"],
+        File["${install_dir}/lib"],
+        File["${install_dir}/logs"],
+        File["${install_dir}/temp"],
+        File["${install_dir}/webapps"],
+        File["${install_dir}/work"],
+        File["${install_dir}/bin/setclasspath.sh"],
+        File["${install_dir}/bin/catalina.sh"],
+        File["${install_dir}/bin/startup.sh"],
+        File["${install_dir}/bin/shutdown.sh"],
+      ],
+    }
+
     file { $tomcat_java_link:
       ensure  => link,
       target  => $corretto_home,
-      require => Class['tom_cat::install'],
+      require => [
+        Class['tom_cat::install'],
+        Exec['set_tomcat_permissions'],
+      ],
     }
 
     file { "${install_dir}/bin/setenv.sh":
@@ -41,7 +92,10 @@ class tom_cat::config (
       owner   => $tomcat_user,
       group   => $tomcat_group,
       mode    => '0755',
-      require => File[$tomcat_java_link],
+      require => [
+        File[$tomcat_java_link],
+        Exec['set_tomcat_permissions'],
+      ],
     }
 
     file { "${install_dir}/conf/server.xml":
@@ -55,6 +109,7 @@ class tom_cat::config (
       owner   => $tomcat_user,
       group   => $tomcat_group,
       mode    => '0644',
+      require => Exec['set_tomcat_permissions'],
     }
 
     file { "${install_dir}/conf/tomcat-users.xml":
@@ -66,6 +121,7 @@ class tom_cat::config (
       owner   => $tomcat_user,
       group   => $tomcat_group,
       mode    => '0600',
+      require => Exec['set_tomcat_permissions'],
     }
 
     file { "${install_dir}/webapps/manager/META-INF/context.xml":
@@ -74,7 +130,10 @@ class tom_cat::config (
       owner   => $tomcat_user,
       group   => $tomcat_group,
       mode    => '0644',
-      require => Class['tom_cat::install'],
+      require => [
+        Class['tom_cat::install'],
+        Exec['set_tomcat_permissions'],
+      ],
     }
 
     file { "/etc/systemd/system/${service_name}.service":
