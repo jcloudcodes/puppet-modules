@@ -12,17 +12,14 @@ class tom_cat::nginx (
     owner   => 'root',
     group   => 'root',
     mode    => '0644',
-    content => inline_epp(@("EOT"), {
-      'server_name' => $server_name,
-      'tomcat_port' => $tomcat_port,
-    })
+    content => @("EOF"),
 upstream tomcat_backend {
-    server 127.0.0.1:<%= $tomcat_port %>;
+    server 127.0.0.1:${tomcat_port};
 }
 
 server {
     listen 80;
-    server_name <%= $server_name %>;
+    server_name ${server_name};
 
     access_log /var/log/nginx/tomcat-access.log;
     error_log  /var/log/nginx/tomcat-error.log;
@@ -30,7 +27,6 @@ server {
     client_max_body_size 200M;
 
     location / {
-
         proxy_pass http://tomcat_backend;
 
         proxy_http_version 1.1;
@@ -47,8 +43,7 @@ server {
         proxy_send_timeout 3600;
     }
 }
-| EOT
-    ,
+| EOF
     require => Package['nginx'],
     notify  => Exec['validate_tomcat_nginx_config'],
   }
