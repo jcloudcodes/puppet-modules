@@ -34,6 +34,10 @@ class tom_cat::install (
       ensure => present,
     }
 
+    package { 'rsync':
+      ensure => installed,
+    }
+
     user { $tomcat_user:
       ensure     => present,
       gid        => $tomcat_group,
@@ -108,7 +112,10 @@ class tom_cat::install (
     exec { 'sync_tomcat_runtime_linux':
       command => "/bin/bash -c 'rsync -a --delete --exclude webapps/ ${tomcat_staging_dir}/ ${install_dir}/ && echo ${tom_version} > ${install_dir}/.tomcat_version'",
       unless  => "/bin/bash -c 'test -f ${install_dir}/.tomcat_version && grep -qx \"${tom_version}\" ${install_dir}/.tomcat_version && test -f ${install_dir}/bin/setclasspath.sh && test -f ${install_dir}/bin/bootstrap.jar && test -f ${install_dir}/bin/catalina.sh && test -f ${install_dir}/bin/startup.sh && test -f ${install_dir}/bin/shutdown.sh'",
-      require => Exec['extract_tomcat_linux'],
+      require => [
+        Package['rsync'],
+        Exec['extract_tomcat_linux'],
+      ],
     }
 
     exec { 'cleanup_tomcat_download_linux':
