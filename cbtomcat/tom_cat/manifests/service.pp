@@ -1,7 +1,7 @@
 class tom_cat::service (
   String $service_name = 'tomcat',
   String $tomcat_home = '/jcloudcodes/cbtom-cat',
-  String $install_dir = '/jcloudcodes/cbtom-cat',
+  String $install_dir = '/jcloudcodes/cbtom-cat/data',
   String $windows_install_dir = 'C:/Tomcat',
 ) {
 
@@ -17,7 +17,7 @@ class tom_cat::service (
         File["${install_dir}/bin/setenv.sh"],
         File["${install_dir}/conf/server.xml"],
         File["${install_dir}/conf/tomcat-users.xml"],
-        File["${tomcat_home}/tomcat-java"],
+        File["${install_dir}/tomcat-java"],
       ],
     }
   } elsif $facts['kernel'] == 'windows' {
