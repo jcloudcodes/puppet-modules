@@ -22,6 +22,12 @@ class tom_cat::uninstall (
       enable => false,
     }
 
+    file { "${install_dir}/temp/tomcat.pid":
+      ensure  => absent,
+      force   => true,
+      require => Service[$service_name],
+    }
+
     file { "/etc/systemd/system/${service_name}.service":
       ensure => absent,
       notify => Exec['systemd_daemon_reload_uninstall'],
@@ -33,9 +39,20 @@ class tom_cat::uninstall (
       refreshonly => true,
     }
 
+    exec { 'systemd_reset_failed_uninstall':
+      command     => "/bin/systemctl reset-failed ${service_name}",
+      path        => ['/usr/bin', '/bin'],
+      refreshonly => true,
+      subscribe   => File["/etc/systemd/system/${service_name}.service"],
+    }
+
     file { $tomcat_home:
       ensure => absent,
       force  => true,
+      require => [
+        File["${install_dir}/temp/tomcat.pid"],
+        Exec['systemd_reset_failed_uninstall'],
+      ],
     }
 
     file { $java_root:
