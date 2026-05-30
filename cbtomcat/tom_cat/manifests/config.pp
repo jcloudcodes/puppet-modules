@@ -10,6 +10,8 @@ class tom_cat::config (
   Integer             $shutdown_port,
   Integer             $connector_port,
   Integer             $redirect_port,
+  String              $admin_user,
+  Sensitive[String]   $admin_password,
   String              $windows_install_dir,
 ) {
 
@@ -53,6 +55,17 @@ class tom_cat::config (
       mode    => '0644',
     }
 
+    file { "${install_dir}/conf/tomcat-users.xml":
+      ensure  => file,
+      content => epp('tom_cat/tomcat-users.xml.epp', {
+        admin_user     => $admin_user,
+        admin_password => $admin_password.unwrap,
+      }),
+      owner   => $tomcat_user,
+      group   => $tomcat_group,
+      mode    => '0600',
+    }
+
     file { "/etc/systemd/system/${service_name}.service":
       ensure  => file,
       content => epp('tom_cat/tomcat.service.epp', {
@@ -91,6 +104,14 @@ class tom_cat::config (
         connector_port => $connector_port,
         redirect_port => $redirect_port,
         environment   => $environment,
+      }),
+    }
+
+    file { "${windows_install_dir}/conf/tomcat-users.xml":
+      ensure  => file,
+      content => epp('tom_cat/tomcat-users.xml.epp', {
+        admin_user     => $admin_user,
+        admin_password => $admin_password.unwrap,
       }),
     }
 

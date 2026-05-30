@@ -98,6 +98,18 @@ class tom_cat::install (
       require => Exec['extract_tomcat_linux'],
     }
 
+    file { [
+      "${install_dir}/bin/catalina.sh",
+      "${install_dir}/bin/startup.sh",
+      "${install_dir}/bin/shutdown.sh",
+    ]:
+      ensure  => file,
+      owner   => $tomcat_user,
+      group   => $tomcat_group,
+      mode    => '0755',
+      require => Exec['extract_tomcat_linux'],
+    }
+
     exec { 'set_tomcat_permissions':
       command => "chown -R ${tomcat_user}:${tomcat_group} ${install_dir}",
       unless  => "/bin/bash -c 'test \"$(stat -c %U ${install_dir})\" = \"${tomcat_user}\"'",

@@ -1,0 +1,16 @@
+---
+# Store encrypted secrets for the tom_cat module in this file.
+# Example:
+# tom_cat::admin_password: >
+#   ENC[PKCS7,MIIB...]
+---
+tom_cat::admin_password: >
+  ENC[PKCS7,MIIBeQYJKoZIhvcNAQcDoIIBajCCAWYCAQAxggEhMIIBHQIBAD
+  AFMAACAQAwDQYJKoZIhvcNAQEBBQAEggEAT0PSF8FA3t5//uk2KMzzrnLD4T
+  czqWmw/3unI19FV3C+lX/zZb1GLAAjf2Mk/L8gk3vVFePkOCRKrrlsjIUhTY
+  83H54rbDJcl24qL0b4hJGaI9CbKMkRjRpS04I0PJ9Yr+tLzZqMLSGE2np1zj
+  7dCCtLMsYhLSjEZHCNaPc3Vr5rSlyz1AJJvEiDmyfxlZ/vAab8JbhRQ4hG6L
+  +kz8bhW3oB3UqRKhMDb6LrLvVUD4MTA17grB9FGAgPqz/83cslN/9b0q0Etj
+  uKWbnkA2xmBNRHqIULFYv2UhaSQbUz3Z2gtx5dJxHlQ2QDa0o8ef0iAqllhr
+  +suoTd5J6cVq37vTA8BgkqhkiG9w0BBwEwHQYJYIZIAWUDBAEqBBBnN5E5Ct
+  Z3gqrtg0OYBLLpgBCJSq6B48IEeSDTuFnM7zrD]

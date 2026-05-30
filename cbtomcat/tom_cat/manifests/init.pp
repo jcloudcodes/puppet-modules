@@ -16,6 +16,8 @@ class tom_cat (
   $shutdown_port       = lookup('tom_cat::shutdown_port')
   $connector_port      = lookup('tom_cat::connector_port')
   $redirect_port       = lookup('tom_cat::redirect_port')
+  $admin_user          = lookup('tom_cat::admin_user')
+  $admin_password      = Sensitive(lookup('tom_cat::admin_password'))
   $windows_install_dir = lookup('tom_cat::windows_install_dir')
 
   if $action == 'uninstall' {
@@ -78,6 +80,8 @@ class tom_cat (
       shutdown_port       => $shutdown_port,
       connector_port      => $connector_port,
       redirect_port       => $redirect_port,
+      admin_user          => $admin_user,
+      admin_password      => $admin_password,
       windows_install_dir => $windows_install_dir,
     }
 

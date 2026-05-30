@@ -7,6 +7,7 @@ tom_cat::tomcat_user: 'tomcat'
 tom_cat::tomcat_group: 'tomcat'
 tom_cat::windows_install_dir: 'C:/Tomcat'
 tom_cat::shutdown_port: 8005
-tom_cat::connector_port: 8080
+tom_cat::connector_port: 8085
 tom_cat::redirect_port: 8443
 tom_cat::nexus_url: 'https://archive.apache.org/dist/tomcat'
+tom_cat::admin_user: 'admin'

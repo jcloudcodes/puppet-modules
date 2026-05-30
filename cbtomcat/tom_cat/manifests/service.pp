@@ -15,6 +15,7 @@ class tom_cat::service (
         File["/etc/systemd/system/${service_name}.service"],
         File["${install_dir}/bin/setenv.sh"],
         File["${install_dir}/conf/server.xml"],
+        File["${install_dir}/conf/tomcat-users.xml"],
         File["${install_dir}/tomcat-java"],
       ],
     }
@@ -25,6 +26,7 @@ class tom_cat::service (
       subscribe => [
         File["${windows_install_dir}/bin/setenv.bat"],
         File["${windows_install_dir}/conf/server.xml"],
+        File["${windows_install_dir}/conf/tomcat-users.xml"],
       ],
     }
   } else {
