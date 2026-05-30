@@ -1,0 +1,9 @@
+{
+  "name": "yourcompany-tom_cat",
+  "version": "0.1.0",
+  "author": "yourcompany",
+  "summary": "Tomcat install, upgrade, config and uninstall module for Linux and Windows",
+  "license": "Apache-2.0",
+  "source": "https://gitlab.example.com/yourcompany/tom_cat",
+  "dependencies": []
+}

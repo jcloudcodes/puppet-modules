@@ -1,0 +1,12 @@
+---
+tom_cat::base_dir: '/jcloudcodes'
+tom_cat::install_dir: '/jcloudcodes/cbtom-cat'
+tom_cat::java_root: '/jcloudcodes/cbtomcat-java'
+tom_cat::service_name: 'tomcat'
+tom_cat::tomcat_user: 'tomcat'
+tom_cat::tomcat_group: 'tomcat'
+tom_cat::windows_install_dir: 'C:/Tomcat'
+tom_cat::shutdown_port: 8005
+tom_cat::connector_port: 8080
+tom_cat::redirect_port: 8443
+tom_cat::nexus_url: 'https://archive.apache.org/dist/tomcat'
