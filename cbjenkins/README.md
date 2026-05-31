@@ -371,6 +371,74 @@ If Jenkins is used to launch SSH agents, the controller needs:
 - a matching public key on the agent host
 - a readable known_hosts file
 
+### Jenkins UI Configuration for SSH Agents
+
+In Jenkins UI:
+
+1. Go to `Manage Jenkins`
+2. Go to `Credentials`
+3. Choose the scope/store you want, usually:
+   - `System`
+   - `Global credentials (unrestricted)`
+4. Click `Add Credentials`
+5. Set:
+   - `Kind`: `SSH Username with private key`
+   - `Scope`: `Global`
+   - `Username`: `jenkins`
+   - `Private Key`: `Enter directly`
+   - paste the contents of:
+     - `/var/lib/jenkins/.ssh/id_ed25519`
+   - `ID`: for example `jslave-ssh-key`
+   - `Description`: `Jenkins SSH key for jslave`
+6. Save
+
+Then when creating the node:
+
+- `Launch method`: `Launch agents via SSH`
+- `Host`: `jslave` IP or DNS
+- `Credentials`: choose `jslave-ssh-key`
+
+Important:
+
+- the username must match the slave user created by Puppet:
+  - `jenkins`
+- the public key from:
+  - `/var/lib/jenkins/.ssh/id_ed25519.pub`
+  is what gets installed into the slave host `authorized_keys`
+- the private key from:
+  - `/var/lib/jenkins/.ssh/id_ed25519`
+  is what Jenkins uses to log in
+
+### Known Hosts Fix
+
+One controller-side failure observed during SSH agent setup was:
+
+```text
+No Known Hosts file was found at /var/lib/jenkins/.ssh/known_hosts
+```
+
+Fix it on the Jenkins controller with:
+
+```bash
+sudo mkdir -p /var/lib/jenkins/.ssh
+sudo touch /var/lib/jenkins/.ssh/known_hosts
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.ssh
+sudo chmod 700 /var/lib/jenkins/.ssh
+sudo chmod 600 /var/lib/jenkins/.ssh/known_hosts
+```
+
+Add the slave host key:
+
+```bash
+sudo -u jenkins ssh-keyscan -H jslave.jcloudcodes.com >> /var/lib/jenkins/.ssh/known_hosts
+```
+
+If you also want IP-based host matching:
+
+```bash
+sudo -u jenkins ssh-keyscan -H <jslave-public-ip> >> /var/lib/jenkins/.ssh/known_hosts
+```
+
 Useful controller-side checks:
 
 ```bash
