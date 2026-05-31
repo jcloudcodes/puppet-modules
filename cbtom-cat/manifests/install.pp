@@ -181,6 +181,7 @@ class tom_cat::install (
       "TEMP=${windows_temp}",
       "TMP=${windows_temp}",
     ],
+    timeout     => 1800,
     require     => [
       File[$windows_temp],
       File[$windows_extract_root],
@@ -203,6 +204,7 @@ class tom_cat::install (
       "TEMP=${windows_temp}",
       "TMP=${windows_temp}",
     ],
+    timeout     => 1800,
     require     => [
       Exec['install_java_windows'],
       File['C:/temp/install-tomcat.ps1'],
