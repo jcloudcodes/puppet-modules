@@ -6,7 +6,7 @@ on:
       - main
       - master
     paths:
-      - 'cbjenkins/jenkins_master/**'
+      - 'cbjenkins/**'
       - '.github/workflows/deploy-jenkins-master.yml'
       - 'ci-cd/cbjenkins/deploy_jenkins_master.sh'
   workflow_dispatch:
@@ -21,19 +21,19 @@ jobs:
 
       - name: Verify module path exists
         run: |
-          test -d cbjenkins/jenkins_master
+          test -d cbjenkins
 
       - name: Show commit details
         run: |
           git rev-parse HEAD
-          git log -1 --stat -- cbjenkins/jenkins_master
+          git log -1 --stat -- cbjenkins
 
   validate:
     name: Validate Puppet Module
     runs-on: ubuntu-latest
     needs: git-check
     env:
-      MODULE_SOURCE: cbjenkins/jenkins_master
+      MODULE_SOURCE: cbjenkins
       REMOTE_HOST: puppet.jcloudcodes.com
       REMOTE_USER: ${{ secrets.PUPPET_FOREMAN_USER }}
       REMOTE_PATH: /etc/puppetlabs/code/environments/production/modules/jenkins_master
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate
     env:
-      MODULE_SOURCE: cbjenkins/jenkins_master
+      MODULE_SOURCE: cbjenkins
       REMOTE_HOST: puppet.jcloudcodes.com
       REMOTE_USER: ${{ secrets.PUPPET_FOREMAN_USER }}
       REMOTE_PATH: /etc/puppetlabs/code/environments/production/modules/jenkins_master

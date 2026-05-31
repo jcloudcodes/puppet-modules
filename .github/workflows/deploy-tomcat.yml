@@ -6,9 +6,9 @@ on:
       - main
       - master
     paths:
-      - 'cbtomcat/tom_cat/**'
+      - 'cbtom-cat/**'
       - '.github/workflows/deploy-tomcat.yml'
-      - 'ci-cd/cbtomcat/deploy_tomcat.sh'
+      - 'ci-cd/cbtom-cat/deploy_tomcat.sh'
   workflow_dispatch:
 
 jobs:
@@ -21,19 +21,19 @@ jobs:
 
       - name: Verify module path exists
         run: |
-          test -d cbtomcat/tom_cat
+          test -d cbtom-cat
 
       - name: Show commit details
         run: |
           git rev-parse HEAD
-          git log -1 --stat -- cbtomcat/tom_cat
+          git log -1 --stat -- cbtom-cat
 
   validate:
     name: Validate Puppet Module
     runs-on: ubuntu-latest
     needs: git-check
     env:
-      MODULE_SOURCE: cbtomcat/tom_cat
+      MODULE_SOURCE: cbtom-cat
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepare-remote
     env:
-      MODULE_SOURCE: cbtomcat/tom_cat
+      MODULE_SOURCE: cbtom-cat
       REMOTE_HOST: puppet.jcloudcodes.com
       REMOTE_USER: ${{ secrets.PUPPET_FOREMAN_USER }}
       REMOTE_PATH: /etc/puppetlabs/code/environments/production/modules/tom_cat
@@ -112,7 +112,7 @@ jobs:
       - name: Copy remote deployment script
         run: |
           rsync -az \
-            "ci-cd/cbtomcat/deploy_tomcat.sh" \
+            "ci-cd/cbtom-cat/deploy_tomcat.sh" \
             "${REMOTE_USER}@${REMOTE_HOST}:/tmp/deploy_tomcat.sh"
 
       - name: Run remote deployment validation
