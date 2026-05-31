@@ -1,97 +1,110 @@
 ## jenkins_master
 
-This module manages a Jenkins master installation on Linux with:
+This module manages a customized Jenkins controller installation on Linux using Puppet and Foreman.
 
-- Jenkins installed from the official Jenkins RPM repository
-- Amazon Corretto installed under a custom path
-- Jenkins runtime configured to use custom home and Java paths
-- Jenkins service managed separately from package installation
+It is designed to:
 
-### Current Module Layout
+- install Jenkins from the official Jenkins RPM repository
+- install Amazon Corretto in a custom path
+- force Jenkins to use the custom Java runtime
+- move `JENKINS_HOME` to a custom runtime path
+- support install, upgrade, config, service, uninstall, and Nginx flows
+- expose Jenkins through `jenkins.jcloudcodes.com`
+
+## Final Jenkins Layout
+
+After a successful run, Jenkins uses this layout:
+
+```text
+/jcloudcodes
+├── cbjenkins
+│   ├── data              # Active JENKINS_HOME
+│   └── jenkins-java      # Symlink to Corretto Java
+└── cbjenkins-java
+    └── amazon-corretto-<version>-linux-x64
+```
+
+Important runtime values:
+
+```text
+JENKINS_HOME=/jcloudcodes/cbjenkins/data
+JAVA_HOME=/jcloudcodes/cbjenkins/jenkins-java
+JENKINS_JAVA_CMD=/jcloudcodes/cbjenkins/jenkins-java/bin/java
+```
+
+## Module Layout
 
 - `manifests/init.pp`
-  Orchestrates install, upgrade, config, and service classes based on the selected action.
+  Orchestrates install, upgrade, config, service, nginx, and uninstall classes.
 
 - `manifests/install.pp`
-  Installs Amazon Corretto under `/jcloudcodes/cbjenkins-java`, configures the Jenkins RPM repository, imports the Jenkins GPG key, and installs the Jenkins RPM package.
+  Installs Amazon Corretto, configures the Jenkins RPM repository, imports the Jenkins GPG key, and installs the Jenkins package.
 
 - `manifests/config.pp`
-  Configures Jenkins runtime behavior. This class manages:
-  - Jenkins home under `/jcloudcodes/cbjenkins/data`
-  - Jenkins Java symlink under `/jcloudcodes/cbjenkins/jenkins-java`
+  Manages Jenkins runtime behavior:
+  - custom Jenkins home
+  - Java symlink
   - `/etc/sysconfig/jenkins`
-  - systemd override configuration
-  - log and cache directory ownership
+  - systemd override
+  - log/cache permissions
   - logrotate and limits configuration
   - transparent huge page tuning
   - Git package installation for SCM support
 
 - `manifests/service.pp`
-  Ensures the Jenkins service is enabled and running after configuration is complete.
+  Ensures Jenkins is enabled and running.
 
 - `manifests/upgrade.pp`
-  Handles post-install or post-upgrade systemd reload and Jenkins failed-state reset.
+  Handles post-package-change systemd reload and failed-state cleanup.
+
+- `manifests/nginx.pp`
+  Manages the Nginx reverse proxy for `jenkins.jcloudcodes.com`.
 
 - `manifests/uninstall.pp`
-  Handles uninstall behavior when `action => 'uninstall'` is used.
+  Removes Jenkins, related runtime data, and the Jenkins-owned Nginx reverse proxy.
 
-### Runtime Paths
+## Class Flow
 
-The module currently uses these custom paths:
+Main install flow:
 
-- Jenkins root: `/jcloudcodes/cbjenkins`
-- Jenkins home: `/jcloudcodes/cbjenkins/data`
-- Java root: `/jcloudcodes/cbjenkins-java`
-- Java symlink used by Jenkins: `/jcloudcodes/cbjenkins/jenkins-java`
+```puppet
+Class['jenkins_master::install']
+-> Class['jenkins_master::upgrade']
+-> Class['jenkins_master::config']
+-> Class['jenkins_master::service']
+-> Class['jenkins_master::nginx']
+```
 
-Important note:
+This keeps responsibilities separated:
 
-- Jenkins is installed as an RPM package from the official Jenkins repository.
-- That means the Jenkins package files still come from standard RPM-managed locations.
-- The custom path under `/jcloudcodes/cbjenkins` is the Jenkins runtime home and Java location, not a fully custom WAR-only installation model.
+```text
+install.pp   -> software and prerequisites
+upgrade.pp   -> post-install/post-upgrade handling
+config.pp    -> runtime configuration
+service.pp   -> Jenkins service
+nginx.pp     -> reverse proxy
+uninstall.pp -> cleanup
+```
 
-### Installation Flow
+## Required Console Parameters
 
-At a high level, the module currently works like this:
-
-1. `install.pp`
-   - creates `/jcloudcodes`
-   - creates `/jcloudcodes/cbjenkins`
-   - creates `/jcloudcodes/cbjenkins-java`
-   - downloads Amazon Corretto to `/tmp`
-   - extracts Corretto into `/jcloudcodes/cbjenkins-java`
-   - configures the Jenkins yum repo
-   - imports the Jenkins public key
-   - installs the Jenkins package
-
-2. `config.pp`
-   - creates `/jcloudcodes/cbjenkins/data`
-   - creates the Java symlink
-   - writes Jenkins runtime values into `/etc/sysconfig/jenkins`
-   - writes a systemd override to force Jenkins home and Java
-
-3. `service.pp`
-   - enables and starts the Jenkins service
-
-### Required Console Parameters
-
-These values are expected from the UI / console:
+These values are expected from Foreman / console:
 
 - `action`
   Example: `install`
 
 - `jenkins_version`
-  This must be the Jenkins RPM version, not the Java major version.
+  Jenkins RPM version.
   Example: `2.555.2-1`
 
 - `corretto_jdk_version`
-  This is the full Amazon Corretto version used to build the extracted directory path.
-  Example: `17.0.19.10.1`
+  Full Amazon Corretto version.
+  Example: `21.0.11.10.1`
 
 - `git_version`
-  Optional at the module level today, depending on future tool-management work.
+  Optional today, reserved for future custom tool management.
 
-### Hiera Values
+## Hiera Values
 
 Current defaults from `data/common.yaml`:
 
@@ -105,175 +118,306 @@ jenkins_master::jenkins_user: 'jenkins'
 jenkins_master::listen_address: '0.0.0.0'
 jenkins_master::jenkins_package: 'jenkins'
 jenkins_master::jenkins_repo_key_id: '14ABFC68'
+jenkins_master::nginx_server_name: 'jenkins.jcloudcodes.com'
 jenkins_master::config_file: '/etc/sysconfig/jenkins'
 jenkins_master::jenkins_repo_baseurl: 'https://pkg.jenkins.io/rpm-stable'
 jenkins_master::jenkins_repo_gpg: 'https://pkg.jenkins.io/rpm-stable/jenkins.io-2026.key'
 ```
 
-### Useful Validation Commands
+## Nginx Reverse Proxy
 
-After a Puppet run, these commands are useful for validation:
+The module exposes Jenkins through:
+
+- `http://jenkins.jcloudcodes.com`
+
+Managed pieces:
+
+- `/etc/nginx/conf.d/jenkins.conf`
+- SELinux boolean for outbound proxy connectivity
+- `nginx -t` validation before reload
+
+Key reverse proxy headers now included:
+
+- `Host`
+- `X-Forwarded-For`
+- `X-Forwarded-Proto`
+- `X-Forwarded-Port`
+- `X-Forwarded-Host`
+
+This is what allows Jenkins to display and remember:
+
+- `http://jenkins.jcloudcodes.com/`
+
+instead of the backend IP and port.
+
+## Useful Validation Commands
+
+### Package and Service
 
 ```bash
 dnf list --showduplicates jenkins
 rpm -qi jenkins
+rpm -q --qf '%{VERSION}-%{RELEASE}\n' jenkins
 systemctl status jenkins
+systemctl status nginx
+```
+
+### Runtime Paths
+
+```bash
 ls -l /jcloudcodes/cbjenkins
 ls -l /jcloudcodes/cbjenkins-java
 cat /etc/sysconfig/jenkins
 cat /etc/systemd/system/jenkins.service.d/override.conf
 ```
 
-### Current Design Notes
+### Jenkins Runtime Validation
 
-- `install.pp` should install software and prerequisites only.
-- `config.pp` should manage Jenkins runtime configuration.
-- `service.pp` should manage service enable/start/restart behavior.
-- This separation is already reflected in the current module structure and is the preferred direction for production use.
+Verify custom Java:
 
-### Existing Notes
+```bash
+/jcloudcodes/cbjenkins/jenkins-java/bin/java -version
+```
 
-internet access is restricted,
-Git version must be controlled,
-security-approved binaries are stored in Nexus/Artifactory,
-Jenkins needs a specific Git version.
+Verify runtime environment:
 
-For your module design, better approach is:
+```bash
+systemctl show jenkins -p Environment --no-pager
+```
 
-install.pp  = Jenkins + Java
-config.pp   = Jenkins runtime config
-tools.pp    = optional Git/custom tools
-service.pp  = Jenkins service
+Verify initial admin password after first successful startup:
 
-But if you want quick integration, you can add custom Git installation into config.pp.
+```bash
+cat /jcloudcodes/cbjenkins/data/secrets/initialAdminPassword
+```
 
-A cleaner production-ready version of your Git logic:
+### Web Validation
 
-# Install custom Git build for Jenkins SCM support.
-#
-# This supports:
-# - Pipeline script from SCM
-# - Git repository validation from Jenkins UI
-# - Enterprise-controlled Git version
+```bash
+curl -I http://127.0.0.1:8080
+curl -I http://jenkins.jcloudcodes.com
+```
 
-if $manage_tools == 'yes' {
+## Important Fixes and Lessons Learned
 
-  $git_root          = '/jcloudcodes/tools'
-  $git_extract_dir   = "${git_root}/git-${git_version}"
-  $git_archive       = "git-${git_version}.tar.gz"
-  $git_archive_path  = "/tmp/${git_archive}"
+### 1. Duplicate File Resource Fix
 
-  # Create tools root directory.
-  file { $git_root:
-    ensure => directory,
-    owner  => 'root',
-    group  => 'root',
-    mode   => '0755',
-  }
+Do not declare the same `File[]` resource in both `install.pp` and `config.pp`.
 
-  # Download custom Git archive from Nexus or internal repository.
-  exec { 'download_custom_git':
-    command => "curl -L -o ${git_archive_path} ${nexus_repo}/git/${git_archive}",
-    creates => $git_archive_path,
-    require => File[$git_root],
-  }
+Final ownership split:
 
-  # Extract Git archive.
-  exec { 'extract_custom_git':
-    command => "tar -xzf ${git_archive_path} -C ${git_root}",
-    unless  => "test -f ${git_extract_dir}/bin/git",
-    require => Exec['download_custom_git'],
-  }
+```text
+install.pp owns:
+  /jcloudcodes
+  /jcloudcodes/cbjenkins
+  /jcloudcodes/cbjenkins-java
 
-  # Create global Git symlink.
-  file { '/usr/bin/git':
-    ensure  => link,
-    target  => "${git_extract_dir}/bin/git",
-    force   => true,
-    require => Exec['extract_custom_git'],
-  }
+config.pp owns:
+  /jcloudcodes/cbjenkins/data
+  /jcloudcodes/cbjenkins/jenkins-java
+  /etc/systemd/system/jenkins.service.d/override.conf
+```
 
-  # Fix older Git library dependency if required.
-  exec { 'git_lib_fix':
-    command => '/usr/bin/ln -s /usr/lib64/libpcre.so.1 /usr/lib64/libpcre.so.0',
-    onlyif  => '/usr/bin/test ! -f /usr/lib64/libpcre.so.0',
-    require => File['/usr/bin/git'],
-  }
+### 2. Duplicate Package Resource Fix
 
-  # Validate installed Git version.
-  exec { 'validate_custom_git':
-    command   => '/usr/bin/git --version',
-    logoutput => true,
-    require   => File['/usr/bin/git'],
-  }
-}
+Only `install.pp` should manage:
 
-Then in init.pp, pass:
+```puppet
+Package[jenkins]
+```
 
-manage_tools => $manage_tools,
-git_version  => $git_version,
+`upgrade.pp` must not redeclare the Jenkins package. It should only handle post-change actions such as:
 
-Production recommendation:
+- systemd daemon reload
+- failed-state reset
 
-Jenkins module
-├── install.pp
-├── upgrade.pp
-├── config.pp
-├── service.pp
-├── uninstall.pp
-└── tools.pp   <-- best place for Git/custom tools
+### 3. Java Compatibility Fix
 
-Instead of putting everything into config.pp.
+Jenkins failed under Java 17.
 
-what is in this nexus_repo for git
+Observed error pattern:
 
-$nexus_repo is meant to be your internal Nexus artifact repository URL where the custom Git tarball is stored.
+```text
+Running with Java 17 ...
+Supported Java versions are: [21, 25]
+```
 
-Example:
+Working combination:
 
-$nexus_repo = 'http://nexus.jcloudcodes.com:8081/repository/tools'
+```text
+jenkins_version      = 2.555.2-1
+corretto_jdk_version = 21.0.11.10.1
+```
 
-Then this line:
+### 4. Jenkins Home Location Fix
 
-source => "${nexus_repo}/git/git-${git_version}.tar.gz"
+Final active home:
 
-becomes:
+```text
+/jcloudcodes/cbjenkins/data
+```
 
-http://nexus.jcloudcodes.com:8081/repository/tools/git/git-2.47.0.tar.gz
+Final variable pattern:
 
-Typical Nexus layout:
+```puppet
+$jenkins_root = '/jcloudcodes/cbjenkins'
+$jenkins_home = "${jenkins_root}/data"
+```
 
-repository/
-└── tools/
-    └── git/
-        ├── git-2.47.0.tar.gz
-        ├── git-2.46.1.tar.gz
-        └── git-2.45.0.tar.gz
+### 5. Systemd Override Fix
 
-You would upload the tarball manually into Nexus.
+Jenkins is forced to use custom Java and custom home through:
 
-Example upload path:
+```text
+/etc/systemd/system/jenkins.service.d/override.conf
+```
 
-curl -u admin:password \
---upload-file git-2.47.0.tar.gz \
-http://nexus.jcloudcodes.com:8081/repository/tools/git/git-2.47.0.tar.gz
+Expected structure:
 
-Then Puppet downloads it:
+```ini
+[Service]
+Environment="JENKINS_HOME=/jcloudcodes/cbjenkins/data"
+Environment="JAVA_HOME=/jcloudcodes/cbjenkins/jenkins-java"
+Environment="PATH=/jcloudcodes/cbjenkins/jenkins-java/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="JENKINS_JAVA_CMD=/jcloudcodes/cbjenkins/jenkins-java/bin/java"
+```
 
-command => "curl -L -o ${git_archive_path} ${nexus_repo}/git/${git_archive}"
+### 6. `/etc/sysconfig/jenkins` Reinstall Fix
 
-So:
+After full cleanup, `/etc/sysconfig/jenkins` could be missing, which breaks `file_line` resources in `config.pp`.
 
-nexus_repo = base repository URL
-git_version = version folder/file selector
+The module now ensures it exists after package installation before runtime configuration is applied.
 
-Example final values:
+### 7. Nginx / SELinux Reverse Proxy Fix
 
-$nexus_repo = 'http://nexus.jcloudcodes.com:8081/repository/tools'
-$git_version = '2.47.0'
+When Nginx was introduced, Jenkins could be reachable locally but fail through the proxy if SELinux blocked the backend connection.
 
-Result:
+The working fix pattern is:
 
-http://nexus.jcloudcodes.com:8081/repository/tools/git/git-2.47.0.tar.gz
+```bash
+setsebool -P httpd_can_network_connect 1
+```
 
-not 
+This behavior is now managed in `nginx.pp`.
+
+## Troubleshooting
+
+### Jenkins Not Starting
+
+Useful commands:
+
+```bash
+systemctl status jenkins
+journalctl -u jenkins -n 100 --no-pager
+systemctl show jenkins -p Environment --no-pager
+```
+
+Check:
+
+- Java version
+- custom home path
+- systemd override
+- `/etc/sysconfig/jenkins`
+
+### Jenkins Running but UI Inaccessible
+
+Useful commands:
+
+```bash
+systemctl status nginx
+nginx -t
+journalctl -u nginx -n 100 --no-pager
+curl -I http://127.0.0.1:8080
+curl -I http://jenkins.jcloudcodes.com
+```
+
+Check:
+
+- `nginx` is running
+- reverse proxy config exists
+- DNS resolves to the Nginx/Jenkins host
+- port `80` is allowed
+
+### Jenkins URL Shows IP Instead of DNS Name
+
+Check:
+
+- Nginx proxy headers
+- Jenkins URL in:
+
+```bash
+cat /jcloudcodes/cbjenkins/data/jenkins.model.JenkinsLocationConfiguration.xml
+```
+
+Expected:
+
+```xml
+<jenkinsUrl>http://jenkins.jcloudcodes.com/</jenkinsUrl>
+```
+
+### First Admin Login
+
+After the first clean install, Jenkins writes the initial unlock password here:
+
+```bash
+cat /jcloudcodes/cbjenkins/data/secrets/initialAdminPassword
+```
+
+### SSH Agent Troubleshooting from Controller Side
+
+If Jenkins is used to launch SSH agents, the controller needs:
+
+- a valid private key credential
+- a matching public key on the agent host
+- a readable known_hosts file
+
+Useful controller-side checks:
+
+```bash
+sudo cat /var/lib/jenkins/.ssh/id_ed25519.pub
+sudo cat /var/lib/jenkins/.ssh/id_ed25519
+sudo -u jenkins ssh-keyscan -H jslave.jcloudcodes.com >> /var/lib/jenkins/.ssh/known_hosts
+ls -l /var/lib/jenkins/.ssh
+```
+
+## Upgrade Behavior
+
+A clean Jenkins upgrade should ideally show only:
+
+```text
+Package[jenkins]/ensure changed old-version to new-version
+Exec[daemon_reload_after_jenkins_install_or_upgrade] triggered
+```
+
+That means:
+
+- package version changed
+- runtime configuration was already converged
+- no unnecessary corrective changes occurred
+
+## Uninstall Behavior
+
+The uninstall flow removes:
+
+- Jenkins package
+- runtime data under `/jcloudcodes/cbjenkins`
+- custom Java under `/jcloudcodes/cbjenkins-java`
+- Jenkins-owned Nginx config
+- Nginx package
+- Git/perl-Git cleanup when present
+
+Important note:
+
+Git and `perl-Git` had an RPM dependency loop, so they must be removed in one transaction.
+
+## Recommended Validation After Changes
+
+```bash
+puppet agent -t
+rpm -q --qf '%{VERSION}-%{RELEASE}\n' jenkins
+systemctl status jenkins
+systemctl status nginx
+/jcloudcodes/cbjenkins/jenkins-java/bin/java -version
+systemctl show jenkins -p Environment --no-pager
+cat /jcloudcodes/cbjenkins/data/secrets/initialAdminPassword
+```
