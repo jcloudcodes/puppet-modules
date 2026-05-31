@@ -179,6 +179,61 @@ Do not assign internal child classes such as:
 
 Those are orchestrated by the parent class.
 
+### If a Module Is Not Showing in Foreman UI
+
+If a deployed module does not appear in Foreman:
+
+1. Confirm Puppet can see the module:
+
+```bash
+puppet module list | grep tom_cat
+ls -l /etc/puppetlabs/code/environments/production/modules/tom_cat/manifests
+cat /etc/puppetlabs/code/environments/production/modules/tom_cat/manifests/init.pp
+```
+
+2. Validate the manifest:
+
+```bash
+puppet parser validate /etc/puppetlabs/code/environments/production/modules/tom_cat/manifests/init.pp
+puppet parser validate /etc/puppetlabs/code/environments/production/modules/tom_cat/manifests/*.pp
+```
+
+3. Confirm Hiera lookup works:
+
+```bash
+puppet lookup tom_cat::base_dir --environment production
+```
+
+4. Re-import Puppet classes into Foreman:
+
+```bash
+foreman-rake puppet:import:puppet_classes
+```
+
+5. Verify Foreman can see the class:
+
+```bash
+hammer puppet-class list --search "name = tom_cat"
+hammer puppet-class list | grep tom_cat
+```
+
+6. Attach the class to the correct host group if needed:
+
+```bash
+hammer hostgroup update --name "puppet-tomcat" --environment production
+hammer hostgroup add-puppetclass --name "puppet-tomcat" --puppetclass tom_cat
+hammer hostgroup info --name puppet-tomcat
+```
+
+Useful discovery commands:
+
+```bash
+foreman-rake --tasks | grep puppet
+hammer hostgroup --help
+hammer puppet-class --help
+hammer hostgroup update --help
+```
+
 ## Parameters
 
 The modules use a mix of:
@@ -265,6 +320,79 @@ Example encrypted values in this repository:
 - Tomcat Manager password
 - Jenkins SSH agent public key
 
+### Create and Configure eyaml
+
+On the Puppet server:
+
+1. Install prerequisites:
+
+```bash
+sudo dnf install -y ruby ruby-devel gcc gcc-c++ make
+sudo gem install hiera-eyaml
+```
+
+2. Create eyaml keys:
+
+```bash
+sudo mkdir -p /etc/puppetlabs/puppet/eyaml
+sudo /usr/local/bin/eyaml createkeys \
+  --pkcs7-private-key /etc/puppetlabs/puppet/eyaml/private_key.pkcs7.pem \
+  --pkcs7-public-key /etc/puppetlabs/puppet/eyaml/public_key.pkcs7.pem
+```
+
+3. Set permissions so Puppetserver can read the keys:
+
+```bash
+sudo chown root:puppet /etc/puppetlabs/puppet/eyaml/private_key.pkcs7.pem
+sudo chmod 640 /etc/puppetlabs/puppet/eyaml/private_key.pkcs7.pem
+sudo chown root:puppet /etc/puppetlabs/puppet/eyaml/public_key.pkcs7.pem
+sudo chmod 644 /etc/puppetlabs/puppet/eyaml/public_key.pkcs7.pem
+```
+
+4. Verify the `puppet` user can read the private key:
+
+```bash
+sudo -u puppet cat /etc/puppetlabs/puppet/eyaml/private_key.pkcs7.pem >/dev/null && echo ok
+```
+
+5. Configure module `hiera.yaml` to use:
+
+```yaml
+pkcs7_private_key: /etc/puppetlabs/puppet/eyaml/private_key.pkcs7.pem
+pkcs7_public_key: /etc/puppetlabs/puppet/eyaml/public_key.pkcs7.pem
+```
+
+6. Encrypt a value:
+
+```bash
+/usr/local/bin/eyaml encrypt -s 'admin12345' \
+  --pkcs7-public-key /etc/puppetlabs/puppet/eyaml/public_key.pkcs7.pem
+```
+
+7. Store the output in `data/common.eyaml`:
+
+```yaml
+tom_cat::admin_password: >
+  ENC[PKCS7,...]
+```
+
+8. Restart Puppetserver after key/permission changes:
+
+```bash
+sudo systemctl restart puppetserver
+systemctl status puppetserver
+ss -lntp | grep 8140
+```
+
+If decryption fails, test the ciphertext manually:
+
+```bash
+sudo /usr/local/bin/eyaml decrypt \
+  --pkcs7-private-key /etc/puppetlabs/puppet/eyaml/private_key.pkcs7.pem \
+  --pkcs7-public-key /etc/puppetlabs/puppet/eyaml/public_key.pkcs7.pem \
+  -f /etc/puppetlabs/code/environments/production/modules/jslave/data/common.eyaml
+```
+
 ## Nginx Exposure
 
 Current Nginx-backed endpoints:
@@ -303,6 +431,41 @@ Remote validation scripts:
 - `ci-cd/jslave/deploy_jslave.sh`
 
 ## Operational Notes
+
+### Puppet Agent Certificate Registration
+
+When a new agent requests a certificate, sign it from the Puppet server.
+
+List pending requests:
+
+```bash
+sudo /opt/puppetlabs/bin/puppetserver ca list
+```
+
+Sign one specific agent:
+
+```bash
+sudo /opt/puppetlabs/bin/puppetserver ca sign \
+  --certname jslave.us-east1-b.c.eagunu-vms-2025-497522.internal
+```
+
+Sign all pending agents:
+
+```bash
+sudo /opt/puppetlabs/bin/puppetserver ca sign --all
+```
+
+Show all certificates:
+
+```bash
+sudo /opt/puppetlabs/bin/puppetserver ca list --all
+```
+
+Then rerun on the agent:
+
+```bash
+puppet agent -t
+```
 
 ### Jenkins SSH agent behavior
 
