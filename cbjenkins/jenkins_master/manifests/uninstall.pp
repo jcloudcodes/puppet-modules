@@ -12,7 +12,7 @@ class jenkins_master::uninstall (
   $jenkins_root      = '/jcloudcodes/cbjenkins'
   $jenkins_java_root = '/jcloudcodes/cbjenkins-java'
 
-  notify { 'jenkins_master::uninstall loaded': }
+  #notify { 'jenkins_master::uninstall loaded': }
 
   # Stop Jenkins only if the service exists.
   exec { 'stop_jenkins_before_uninstall':
