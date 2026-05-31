@@ -157,10 +157,16 @@ class tom_cat::install (
       ensure => directory,
     }
 
+    file { 'C:/temp/install-java.ps1':
+      ensure  => file,
+      source  => 'puppet:///modules/tom_cat/windows/install-java.ps1',
+      require => File['C:/temp'],
+    }
+
     exec { 'install_java_windows':
-      command   => "${windows_powershell} -ExecutionPolicy Bypass -Command \"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; if (!(Test-Path 'C:/temp')) { New-Item -Path 'C:/temp' -ItemType Directory -Force | Out-Null }; if (!(Test-Path '${windows_install_dir}')) { New-Item -Path '${windows_install_dir}' -ItemType Directory -Force | Out-Null }; Invoke-WebRequest -Uri '${windows_corretto_url}' -OutFile '${windows_corretto_zip}'; \$extractRoot = 'C:/temp/corretto-extract'; if (Test-Path \$extractRoot) { Remove-Item -Path \$extractRoot -Recurse -Force }; Expand-Archive -Path '${windows_corretto_zip}' -DestinationPath \$extractRoot -Force; \$jdkDir = Get-ChildItem -Path \$extractRoot -Directory | Select-Object -First 1; if (-not \$jdkDir) { throw 'Corretto archive extraction failed' }; if (Test-Path '${windows_corretto_dir}') { Remove-Item -Path '${windows_corretto_dir}' -Recurse -Force }; Move-Item -Path \$jdkDir.FullName -Destination '${windows_corretto_dir}'\"",
+      command   => "${windows_powershell} -ExecutionPolicy Bypass -File C:/temp/install-java.ps1 -JavaUrl ${windows_corretto_url} -ZipPath ${windows_corretto_zip} -ExtractRoot C:/temp/corretto-extract -InstallDir ${windows_install_dir} -JavaHome ${windows_corretto_dir}",
       unless    => "${windows_powershell} -Command \"if (Test-Path '${windows_corretto_dir}/bin/java.exe') { exit 0 } else { exit 1 }\"",
-      require   => File['C:/temp'],
+      require   => File['C:/temp/install-java.ps1'],
       logoutput => true,
     }
 
