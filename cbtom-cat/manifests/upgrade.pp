@@ -54,9 +54,6 @@ class tom_cat::upgrade (
       require   => Exec['stop_tomcat_before_upgrade_windows'],
     }
 
-    notify { "Tomcat ${tom_version} backup completed on Windows":
-    }
-
   } else {
     fail("Unsupported kernel: ${facts['kernel']}")
   }
