@@ -58,10 +58,6 @@ class tom_cat::nginx (
     $windows_nginx_version_file = "${windows_nginx_home}/.nginx_version"
     $windows_nginx_url          = "https://nginx.org/download/nginx-${windows_nginx_version}.zip"
 
-    file { $windows_temp:
-      ensure => directory,
-    }
-
     file { $windows_nginx_home:
       ensure => directory,
     }
