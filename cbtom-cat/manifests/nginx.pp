@@ -96,7 +96,7 @@ class tom_cat::nginx (
     }
 
     exec { 'register_windows_nginx_startup_task':
-      command   => "${windows_powershell} -NoProfile -Command \"$action = New-ScheduledTaskAction -Execute '${windows_nginx_home}/nginx.exe' -Argument '-p \\\"${windows_nginx_home}\\\"'; $trigger = New-ScheduledTaskTrigger -AtStartup; $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; Register-ScheduledTask -TaskName '${windows_nginx_task_name}' -Action $action -Trigger $trigger -Settings $settings -User 'SYSTEM' -RunLevel Highest -Force | Out-Null\"",
+      command   => "${windows_powershell} -NoProfile -Command \"\$action = New-ScheduledTaskAction -Execute '${windows_nginx_home}/nginx.exe' -Argument '-p \\\"${windows_nginx_home}\\\"'; \$trigger = New-ScheduledTaskTrigger -AtStartup; \$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; Register-ScheduledTask -TaskName '${windows_nginx_task_name}' -Action \$action -Trigger \$trigger -Settings \$settings -User 'SYSTEM' -RunLevel Highest -Force | Out-Null\"",
       unless    => "${windows_powershell} -NoProfile -Command \"if (Get-ScheduledTask -TaskName '${windows_nginx_task_name}' -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }\"",
       require   => Exec['install_windows_nginx'],
       logoutput => true,
