@@ -231,7 +231,7 @@ Then configure the node:
 
 - `Host Key Verification Strategy`
   Use the strategy your team prefers.
-  If you manage `/var/lib/jenkins/.ssh/known_hosts`, choose the known-hosts based strategy.
+  If you manage `/jcloudcodes/customer-ssh-keys/jenkins/known_hosts`, choose the known-hosts based strategy.
 
 ### Add Jenkins SSH Credential
 
@@ -260,7 +260,7 @@ Set:
   `Enter directly`
 
 - Paste the contents of:
-  `/var/lib/jenkins/.ssh/id_ed25519`
+  `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519`
 
 - `ID`
   Example: `jslave-ssh-key`
@@ -294,7 +294,7 @@ Set:
   `Enter directly`
 
 - paste the contents of:
-  `/var/lib/jenkins/.ssh/id_ed25519`
+  `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519`
 
 - `ID`
   something like `jslave-ssh-key`
@@ -331,12 +331,12 @@ Use this example when adding the SSH credential in Jenkins:
 
 - Paste into `Private Key`
   the full contents of:
-  `/var/lib/jenkins/.ssh/id_ed25519`
+  `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519`
 
 Important mapping:
 
 - Jenkins controller private key:
-  `/var/lib/jenkins/.ssh/id_ed25519`
+  `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519`
 
 - Matching public key installed by Puppet on the agent:
   `jslave::ssh_public_key`
@@ -350,11 +350,11 @@ Important:
   `jenkins`
 
 - the public key from:
-  `/var/lib/jenkins/.ssh/id_ed25519.pub`
+  `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519.pub`
   is what was installed into the slave’s `authorized_keys`
 
 - the private key from:
-  `/var/lib/jenkins/.ssh/id_ed25519`
+  `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519`
   is what Jenkins uses to log in
 
 ### Short Jenkins Node Workflow
@@ -385,6 +385,7 @@ Set:
 
 - `Host`
   the slave IP or DNS name
+  Example: `jslave.jcloudcodes.com`
 
 - `Credentials`
   add the Jenkins controller private key that matches the public key you put on the slave
@@ -398,28 +399,47 @@ Then when creating the node:
 
 - `Host`
   `jslave` IP or DNS
+  Example: `jslave.jcloudcodes.com`
 
 - `Credentials`
   choose `jslave-ssh-key`
 
 ### Controller-Side Known Hosts
 
-If Jenkins reports that `/var/lib/jenkins/.ssh/known_hosts` is missing, create and populate it on the controller:
+Recommended shared controller-side SSH key location:
+
+```text
+/jcloudcodes/customer-ssh-keys/jenkins
+```
+
+Create it on the Jenkins controller like this:
 
 ```bash
-sudo mkdir -p /var/lib/jenkins/.ssh
-sudo touch /var/lib/jenkins/.ssh/known_hosts
-sudo chown -R jenkins:jenkins /var/lib/jenkins/.ssh
-sudo chmod 700 /var/lib/jenkins/.ssh
-sudo chmod 600 /var/lib/jenkins/.ssh/known_hosts
-sudo -u jenkins ssh-keyscan -H jslave.jcloudcodes.com >> /var/lib/jenkins/.ssh/known_hosts
+sudo mkdir -p /jcloudcodes/customer-ssh-keys/jenkins
+sudo chown -R jenkins:jenkins /jcloudcodes/customer-ssh-keys
+sudo chmod 700 /jcloudcodes/customer-ssh-keys/jenkins
+sudo -u jenkins ssh-keygen -t ed25519 -f /jcloudcodes/customer-ssh-keys/jenkins/id_ed25519 -N ''
+sudo touch /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+sudo chown jenkins:jenkins /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+sudo chmod 600 /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+```
+
+If Jenkins reports that `/jcloudcodes/customer-ssh-keys/jenkins/known_hosts` is missing, create and populate it on the controller:
+
+```bash
+sudo mkdir -p /jcloudcodes/customer-ssh-keys/jenkins
+sudo touch /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+sudo chown -R jenkins:jenkins /jcloudcodes/customer-ssh-keys
+sudo chmod 700 /jcloudcodes/customer-ssh-keys/jenkins
+sudo chmod 600 /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+sudo -u jenkins ssh-keyscan -H jslave.jcloudcodes.com >> /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
 ```
 
 Useful controller-side checks:
 
 ```bash
-sudo cat /var/lib/jenkins/.ssh/id_ed25519.pub
-sudo cat /var/lib/jenkins/.ssh/id_ed25519
-sudo -u jenkins cat /var/lib/jenkins/.ssh/known_hosts
-ls -l /var/lib/jenkins/.ssh
+sudo cat /jcloudcodes/customer-ssh-keys/jenkins/id_ed25519.pub
+sudo cat /jcloudcodes/customer-ssh-keys/jenkins/id_ed25519
+sudo -u jenkins cat /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+ls -l /jcloudcodes/customer-ssh-keys/jenkins
 ```

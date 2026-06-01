@@ -371,6 +371,24 @@ If Jenkins is used to launch SSH agents, the controller needs:
 - a matching public key on the agent host
 - a readable known_hosts file
 
+Recommended custom controller-side key path:
+
+```text
+/jcloudcodes/customer-ssh-keys/jenkins
+```
+
+Create it on the Jenkins controller like this:
+
+```bash
+sudo mkdir -p /jcloudcodes/customer-ssh-keys/jenkins
+sudo chown -R jenkins:jenkins /jcloudcodes/customer-ssh-keys
+sudo chmod 700 /jcloudcodes/customer-ssh-keys/jenkins
+sudo -u jenkins ssh-keygen -t ed25519 -f /jcloudcodes/customer-ssh-keys/jenkins/id_ed25519 -N ''
+sudo touch /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+sudo chown jenkins:jenkins /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+sudo chmod 600 /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+```
+
 ### Jenkins UI Configuration for SSH Agents
 
 In Jenkins UI:
@@ -387,7 +405,7 @@ In Jenkins UI:
    - `Username`: `jenkins`
    - `Private Key`: `Enter directly`
    - paste the contents of:
-     - `/var/lib/jenkins/.ssh/id_ed25519`
+     - `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519`
    - `ID`: for example `jslave-ssh-key`
    - `Description`: `Jenkins SSH key for jslave`
 6. Save
@@ -403,10 +421,10 @@ Important:
 - the username must match the slave user created by Puppet:
   - `jenkins`
 - the public key from:
-  - `/var/lib/jenkins/.ssh/id_ed25519.pub`
+  - `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519.pub`
   is what gets installed into the slave host `authorized_keys`
 - the private key from:
-  - `/var/lib/jenkins/.ssh/id_ed25519`
+  - `/jcloudcodes/customer-ssh-keys/jenkins/id_ed25519`
   is what Jenkins uses to log in
 
 ### Known Hosts Fix
@@ -414,38 +432,38 @@ Important:
 One controller-side failure observed during SSH agent setup was:
 
 ```text
-No Known Hosts file was found at /var/lib/jenkins/.ssh/known_hosts
+No Known Hosts file was found at /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
 ```
 
 Fix it on the Jenkins controller with:
 
 ```bash
-sudo mkdir -p /var/lib/jenkins/.ssh
-sudo touch /var/lib/jenkins/.ssh/known_hosts
-sudo chown -R jenkins:jenkins /var/lib/jenkins/.ssh
-sudo chmod 700 /var/lib/jenkins/.ssh
-sudo chmod 600 /var/lib/jenkins/.ssh/known_hosts
+sudo mkdir -p /jcloudcodes/customer-ssh-keys/jenkins
+sudo touch /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+sudo chown -R jenkins:jenkins /jcloudcodes/customer-ssh-keys
+sudo chmod 700 /jcloudcodes/customer-ssh-keys/jenkins
+sudo chmod 600 /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
 ```
 
 Add the slave host key:
 
 ```bash
-sudo -u jenkins ssh-keyscan -H jslave.jcloudcodes.com >> /var/lib/jenkins/.ssh/known_hosts
+sudo -u jenkins ssh-keyscan -H jslave.jcloudcodes.com >> /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
 ```
 
 If you also want IP-based host matching:
 
 ```bash
-sudo -u jenkins ssh-keyscan -H <jslave-public-ip> >> /var/lib/jenkins/.ssh/known_hosts
+sudo -u jenkins ssh-keyscan -H <jslave-public-ip> >> /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
 ```
 
 Useful controller-side checks:
 
 ```bash
-sudo cat /var/lib/jenkins/.ssh/id_ed25519.pub
-sudo cat /var/lib/jenkins/.ssh/id_ed25519
-sudo -u jenkins ssh-keyscan -H jslave.jcloudcodes.com >> /var/lib/jenkins/.ssh/known_hosts
-ls -l /var/lib/jenkins/.ssh
+sudo cat /jcloudcodes/customer-ssh-keys/jenkins/id_ed25519.pub
+sudo cat /jcloudcodes/customer-ssh-keys/jenkins/id_ed25519
+sudo -u jenkins cat /jcloudcodes/customer-ssh-keys/jenkins/known_hosts
+ls -l /jcloudcodes/customer-ssh-keys/jenkins
 ```
 
 ## Upgrade Behavior
